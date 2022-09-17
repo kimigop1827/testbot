@@ -1,109 +1,130 @@
-const { spawn } = require("child_process");
-const { readFileSync } = require("fs-extra");
-const http = require("http");
-const axios = require("axios");
-const semver = require("semver");
-const logger = require("./utils/log");
+const assets = require('@miraipr0ject/assets');
+const crypto = require('crypto');
+const os = require("os");
 
-/////////////////////////////////////////////
-//========= Check node.js version =========//
-/////////////////////////////////////////////
+module.exports.throwError = function (command, threadID, messageID) {
+	const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
+	return global.client.api.sendMessage(global.getText("utils", "throwError", ((threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX), command), threadID, messageID);
+}
 
-// const nodeVersion = semver.parse(process.version);
-// if (nodeVersion.major < 13) {
-//     logger(`Your Node.js ${process.version} is not supported, it required Node.js 13 to run bot!`, "error");
-//     return process.exit(0);
-// };
+module.exports.cleanAnilistHTML = function (text) {
+	text = text
+		.replace('<br>', '\n')
+		.replace(/<\/?(i|em)>/g, '*')
+		.replace(/<\/?b>/g, '**')
+		.replace(/~!|!~/g, '||')
+		.replace("&amp;", "&")
+		.replace("&lt;", "<")
+		.replace("&gt;", ">")
+		.replace("&quot;", '"')
+		.replace("&#039;", "'");
+	return text;
+}
 
-///////////////////////////////////////////////////////////
-//========= Create website for dashboard/uptime =========//
-///////////////////////////////////////////////////////////
+module.exports.downloadFile = async function (url, path) {
+	const { createWriteStream } = require('fs');
+	const axios = require('axios');
 
-/*const dashboard = http.createServer(function (_req, res) {
-    res.writeHead(200, "OK", { "Content-Type": "text/plain" });
-    res.write("HI! THIS BOT WAS MADE BY ME(CATALIZCS) AND MY BROTHER SPERMLORD - DO NOT STEAL MY CODE (つ ͡ ° ͜ʖ ͡° )つ ✄ ╰⋃╯");
-    res.end();
-});
+	const response = await axios({
+		method: 'GET',
+		responseType: 'stream',
+		url
+	});
 
-dashboard.listen(process.env.port || 0);*/
-const express = require('express');
-const app = express();
+	const writer = createWriteStream(path);
 
-const port = process.env.PORT || 5000
-// const port = 5000
-     
-app.listen(port, () =>
-	logger(`Your app is listening a http://localhost:${port}`, "[ ONLINE ]")
-     );      
+	response.data.pipe(writer);
 
-
-logger("Opened server site...", "[ Starting ]");
-
-/////////////////////////////////////////////////////////
-//========= Create start bot and make it loop =========//
-/////////////////////////////////////////////////////////
-
-function startBot(message) {
-    (message) ? logger(message, "[ Starting ]") : "";
-
-    const child = spawn("node", ["--trace-warnings", "--async-stack-traces", "mirai.js"], {
-        cwd: __dirname,
-        stdio: "inherit",
-        shell: true
-    });
-
-  /*child.on("close",async (codeExit) => {
-      var x = 'codeExit'.replace('codeExit',codeExit);
-        if (codeExit == 1) return startBot("Restarting...");
-         else if (x.indexOf(2) == 0) {
-           await new Promise(resolve => setTimeout(resolve, parseInt(x.replace(2,'')) * 1000));
-                 startBot("Open ...");
-       }
-         else return; 
-    });*/
-  child.on("close", (codeExit) => {
-        if (codeExit != 0 || global.countRestart && global.countRestart < 5) {
-            startBot("Starting up...");
-            global.countRestart += 1;
-            return;
-        } else return;
-    });
-
-  child.on("error", function(error) {
-    logger("An error occurred: " + JSON.stringify(error), "[ Starting ]");
-  });
+	return new Promise((resolve, reject) => {
+		writer.on('finish', resolve);
+		writer.on('error', reject);
+	});
 };
-////////////////////////////////////////////////
-//========= Check update from Github =========//
-////////////////////////////////////////////////
 
+module.exports.getContent = async function(url) {
+	try {
+		const axios = require("axios");
 
-axios.get("https://raw.githubusercontent.com/umaruchan0x1861/umarubot1.1.1/main/package.json").then((res) => {
-  logger(res['data']['name'], "[ NAME ]");
-  logger("Version: " + res['data']['version'], "[ VERSION ]");
-  logger(res['data']['description'], "[ DESCRIPTION ]");
-});
-startBot();
-/*axios.get("https://raw.githubusercontent.com/Shiron-Official/miraiv2/main/package.json").then((res) => {
-    const local = JSON.parse(readFileSync('./package.json'));
-    if (semver['lt'](local.version, res['data']['version'])) {
-        if (local.autoUpdate == !![]) {
-            logger('A new update is available, start update processing...', '[ UPDATE ]');
-            const updateBot = {};
-            updateBot.cwd = __dirname
-            updateBot.stdio = 'inherit'
-            updateBot.shell = !![];
-            const child = spawn('node', ['update.js'], updateBot);
-            child.on('exit', function () {
-                return process.exit(0);
-            })
-            child.on('error', function (error) {
-                logger('Unable to update:' + JSON.stringify(error), '[ CHECK UPDATE ]');
-            });
-        } else logger('A new update is available! Open terminal/cmd and type "node update" to update!', '[ UPDATE ]'),
-        startBot();
-    } else logger('You are using the latest version!', '[ CHECK UPDATE ]'), startBot();
-}).catch(err => logger("Unable to check update.", "[ CHECK UPDATE ]"));*/
-// THIZ BOT WAS MADE BY ME(CATALIZCS) AND MY BROTHER SPERMLORD - DO NOT STEAL MY CODE (つ ͡ ° ͜ʖ ͡° )つ ✄ ╰⋃╯
-app.get('/', (req, res) => //res.send('YAHALLO!!'));
-res.sendFile(__dirname+'/index.html'))
+		const response = await axios({
+			method: 'GET',
+			url
+		});
+
+		const data = response;
+
+		return data;
+	} catch (e) { return console.log(e); };
+}
+
+module.exports.randomString = function (length) {
+	var result           = '';
+	var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+	var charactersLength = characters.length || 5;
+	for ( var i = 0; i < length; i++ ) result += characters.charAt(Math.floor(Math.random() * charactersLength));
+	return result;
+}
+
+module.exports.assets = {
+	async font (name) {
+		if (!assets.font.loaded) await assets.font.load();
+		return assets.font.get(name);
+	},
+	async image (name) {
+		if (!assets.image.loaded) await assets.image.load();
+		return assets.image.get(name);
+	},
+	async data (name) {
+		if (!assets.data.loaded) await assets.data.load();
+		return assets.data.get(name);
+	}
+}
+
+module.exports.AES = {
+	encrypt (cryptKey, crpytIv, plainData) {
+		var encipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(cryptKey), Buffer.from(crpytIv));
+        var encrypted = encipher.update(plainData);
+		encrypted = Buffer.concat([encrypted, encipher.final()]);
+		return encrypted.toString('hex');
+	},
+	decrypt (cryptKey, cryptIv, encrypted) {
+		encrypted = Buffer.from(encrypted, "hex");
+		var decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(cryptKey), Buffer.from(cryptIv, 'binary'));
+		var decrypted = decipher.update(encrypted);
+	
+		decrypted = Buffer.concat([decrypted, decipher.final()]);
+	
+		return String(decrypted);
+	},
+	makeIv () { return Buffer.from(crypto.randomBytes(16)).toString('hex').slice(0, 16); }
+}
+
+module.exports.homeDir = function () {
+	var returnHome, typeSystem;
+	const home = process.env["HOME"];
+	const user = process.env["LOGNAME"] || process.env["USER"] || process.env["LNAME"] || process.env["USERNAME"];
+
+	switch (process.platform) {
+		case "win32": {
+			returnHome = process.env.USERPROFILE || process.env.HOMEDRIVE + process.env.HOMEPATH || home || null;
+			typeSystem = "win32"
+			break;
+		}
+		case "darwin": {
+			returnHome = home || (user ? '/Users/' + user : null);
+			typeSystem = "darwin";
+			break;
+		}
+		case "linux": {
+			returnHome =  home || (process.getuid() === 0 ? '/root' : (user ? '/home/' + user : null));
+			typeSystem = "linux"
+			break;
+		}
+		default: {
+			returnHome = home || null;
+			typeSystem = "unknow"
+			break;
+		}
+	}
+
+	return [typeof os.homedir === 'function' ? os.homedir() : returnHome, typeSystem];
+}
